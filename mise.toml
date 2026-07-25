@@ -1,0 +1,6 @@
+[tools]
+k9s = "latest"
+kubectl = "latest"
+kubens = "latest"
+lazygit = "latest"
+terraform = "latest"
