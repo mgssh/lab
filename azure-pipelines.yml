@@ -45,6 +45,7 @@ stages:
                 cd $(terraformWorkingDir)
                 export ARM_CLIENT_ID=$servicePrincipalId
                 export ARM_TENANT_ID=$tenantId
+                export ARM_SUBSCRIPTION_ID=e64e57f5-58d6-4a91-85e1-82376f39a4d6
                 export ARM_USE_OIDC=true
                 export ARM_OIDC_TOKEN=$idToken
                 terraform init
@@ -66,6 +67,7 @@ stages:
                 cd $(terraformWorkingDir)
                 export ARM_CLIENT_ID=$servicePrincipalId
                 export ARM_TENANT_ID=$tenantId
+                export ARM_SUBSCRIPTION_ID=e64e57f5-58d6-4a91-85e1-82376f39a4d6
                 export ARM_USE_OIDC=true
                 export ARM_OIDC_TOKEN=$idToken
                 terraform plan -out=tfplan
@@ -103,6 +105,7 @@ stages:
                       cd $(terraformWorkingDir)
                       export ARM_CLIENT_ID=$servicePrincipalId
                       export ARM_TENANT_ID=$tenantId
+                      export ARM_SUBSCRIPTION_ID=e64e57f5-58d6-4a91-85e1-82376f39a4d6
                       export ARM_USE_OIDC=true
                       export ARM_OIDC_TOKEN=$idToken
                       terraform init
