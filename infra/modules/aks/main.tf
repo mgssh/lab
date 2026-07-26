@@ -71,14 +71,21 @@ resource "azurerm_kubernetes_cluster" "this" {
 
   role_based_access_control_enabled = true
 
-
   lifecycle {
     ignore_changes = [default_node_pool[0].node_count]
+  }
+
+  key_vault_secrets_provider {
+    secret_rotation_enabled = true
   }
 }
 
 output "cluster_name" {
   value = azurerm_kubernetes_cluster.this.name
+}
+
+output "kubelet_identity_object_id" {
+  value = azurerm_kubernetes_cluster.this.kubelet_identity[0].object_id
 }
 
 output "oidc_issuer_url" {

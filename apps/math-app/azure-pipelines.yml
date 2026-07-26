@@ -1,0 +1,119 @@
+trigger:
+  branches:
+    include:
+      - main
+  paths:
+    include:
+      - apps/math-app/*
+
+pr:
+  branches:
+    include:
+      - main
+  paths:
+    include:
+      - apps/math-app/*
+
+pool:
+  vmImage: ubuntu-latest
+
+variables:
+  serviceConnection: azure-books-dev
+  acrName: acrbooksdevowy0jp
+  resourceGroup: rg-books-dev
+  aksName: aks-books-dev
+  imageTag: v$(Build.BuildId)
+
+stages:
+  - stage: Build
+    displayName: Build and Scan
+    jobs:
+      - job: BuildAndScan
+        displayName: Build and scan
+        steps:
+          - task: AzureCLI@2
+            displayName: az acr build - backend
+            inputs:
+              azureSubscription: $(serviceConnection)
+              scriptType: bash
+              scriptLocation: inlineScript
+              inlineScript: |
+                az acr build \
+                  --registry $(acrName) \
+                  --image math-backend:$(imageTag) \
+                  apps/math-app/backend
+
+          - task: AzureCLI@2
+            displayName: az acr build - frontend
+            inputs:
+              azureSubscription: $(serviceConnection)
+              scriptType: bash
+              scriptLocation: inlineScript
+              inlineScript: |
+                az acr build \
+                  --registry $(acrName) \
+                  --image math-frontend:$(imageTag) \
+                  --build-arg VITE_API_URL=https://math.20.226.197.77.nip.io/api \
+                  apps/math-app/frontend
+
+          - script: |
+              curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
+            displayName: Install Trivy
+
+          - task: AzureCLI@2
+            displayName: az acr login
+            inputs:
+              azureSubscription: $(serviceConnection)
+              scriptType: bash
+              scriptLocation: inlineScript
+              inlineScript: |
+                az acr login --name $(acrName)
+
+          - script: |
+              trivy image --severity HIGH,CRITICAL --exit-code 0 \
+                $(acrName).azurecr.io/math-backend:$(imageTag)
+              trivy image --severity HIGH,CRITICAL --exit-code 0 \
+                $(acrName).azurecr.io/math-frontend:$(imageTag)
+            displayName: Trivy scan
+
+  - stage: Deploy
+    displayName: Deploy
+    dependsOn: Build
+    condition: |
+      and(
+        succeeded(),
+        eq(variables['Build.SourceBranch'], 'refs/heads/main')
+      )
+    jobs:
+      - deployment: Deploy
+        displayName: Update deploy
+        environment: books-dev
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - checkout: self
+
+                - task: AzureCLI@2
+                  displayName: kubectl set image
+                  inputs:
+                    azureSubscription: $(serviceConnection)
+                    scriptType: bash
+                    scriptLocation: inlineScript
+                    inlineScript: |
+                      az aks get-credentials \
+                        --resource-group $(resourceGroup) \
+                        --name $(aksName) \
+                        --admin \
+                        --overwrite-existing
+
+                      kubectl set image deployment/math-backend \
+                        math-backend=$(acrName).azurecr.io/math-backend:$(imageTag) \
+                        -n math-app
+
+                      kubectl set image deployment/math-frontend \
+                        math-frontend=$(acrName).azurecr.io/math-frontend:$(imageTag) \
+                        -n math-app
+
+                      kubectl rollout status deployment/math-backend -n math-app
+                      kubectl rollout status deployment/math-frontend -n math-app

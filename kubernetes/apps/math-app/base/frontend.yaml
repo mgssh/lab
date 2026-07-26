@@ -1,0 +1,38 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: math-frontend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: math-frontend
+  template:
+    metadata:
+      labels:
+        app: math-frontend
+    spec:
+      containers:
+        - name: math-frontend
+          image: acrbooksdevowy0jp.azurecr.io/math-frontend:v1
+          ports:
+            - containerPort: 80
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: math-frontend
+spec:
+  type: ClusterIP
+  selector:
+    app: math-frontend
+  ports:
+    - port: 80
+      targetPort: 80

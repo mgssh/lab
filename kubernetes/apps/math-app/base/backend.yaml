@@ -1,0 +1,63 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: math-backend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: math-backend
+  template:
+    metadata:
+      labels:
+        app: math-backend
+        azure.workload.identity/use: "true"
+    spec:
+      serviceAccountName: math-backend
+      containers:
+        - name: math-backend
+          image: acrbooksdevowy0jp.azurecr.io/math-backend:v2
+          ports:
+            - containerPort: 8000
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: math-backend-db
+                  key: DATABASE_URL
+          volumeMounts:
+            - name: secrets-store
+              mountPath: /mnt/secrets-store
+              readOnly: true
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 300m
+              memory: 256Mi
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+      volumes:
+        - name: secrets-store
+          csi:
+            driver: secrets-store.csi.k8s.io
+            readOnly: true
+            volumeAttributes:
+              secretProviderClass: math-backend-secrets
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: math-backend
+spec:
+  type: ClusterIP
+  selector:
+    app: math-backend
+  ports:
+    - port: 8000
+      targetPort: 8000
