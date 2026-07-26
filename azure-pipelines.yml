@@ -1,0 +1,107 @@
+trigger:
+  branches:
+    include:
+      - main
+  paths:
+    include:
+      - infra/*
+
+pr:
+  branches:
+    include:
+      - main
+  paths:
+    include:
+      - infra/*
+
+pool:
+  vmImage: ubuntu-latest
+
+variables:
+  serviceConnection: azure-books-dev
+  terraformWorkingDir: infra/envs/dev
+
+stages:
+  - stage: Plan
+    displayName: Terraform Plan
+    jobs:
+      - job: Plan
+        displayName: Plan
+        steps:
+          - task: TerraformInstaller@1
+            displayName: Instalar Terraform
+            inputs:
+              terraformVersion: 1.9.8
+
+          - task: AzureCLI@2
+            displayName: terraform init
+            inputs:
+              azureSubscription: $(serviceConnection)
+              scriptType: bash
+              scriptLocation: inlineScript
+              addSpnToEnvironment: true
+              inlineScript: |
+                cd $(terraformWorkingDir)
+                export ARM_CLIENT_ID=$servicePrincipalId
+                export ARM_TENANT_ID=$tenantId
+                export ARM_USE_OIDC=true
+                export ARM_OIDC_TOKEN=$idToken
+                terraform init
+
+          - script: |
+              cd $(terraformWorkingDir)
+              terraform fmt -check -recursive
+            displayName: terraform fmt -check
+            workingDirectory: $(System.DefaultWorkingDirectory)
+
+          - task: AzureCLI@2
+            displayName: terraform plan
+            inputs:
+              azureSubscription: $(serviceConnection)
+              scriptType: bash
+              scriptLocation: inlineScript
+              addSpnToEnvironment: true
+              inlineScript: |
+                cd $(terraformWorkingDir)
+                export ARM_CLIENT_ID=$servicePrincipalId
+                export ARM_TENANT_ID=$tenantId
+                export ARM_USE_OIDC=true
+                export ARM_OIDC_TOKEN=$idToken
+                terraform plan -out=tfplan
+
+  - stage: Apply
+    displayName: Terraform Apply
+    dependsOn: Plan
+    condition: |
+      and(
+        succeeded(),
+        eq(variables['Build.SourceBranch'], 'refs/heads/main')
+      )
+    jobs:
+      - deployment: Apply
+        displayName: Apply
+        environment: books-dev
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - task: TerraformInstaller@1
+                  displayName: Instalar Terraform
+                  inputs:
+                    terraformVersion: 1.9.8
+
+                - task: AzureCLI@2
+                  displayName: terraform init + apply
+                  inputs:
+                    azureSubscription: $(serviceConnection)
+                    scriptType: bash
+                    scriptLocation: inlineScript
+                    addSpnToEnvironment: true
+                    inlineScript: |
+                      cd $(terraformWorkingDir)
+                      export ARM_CLIENT_ID=$servicePrincipalId
+                      export ARM_TENANT_ID=$tenantId
+                      export ARM_USE_OIDC=true
+                      export ARM_OIDC_TOKEN=$idToken
+                      terraform init
+                      terraform apply -auto-approve
