@@ -1,0 +1,65 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: calibre-web
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: calibre-web
+  template:
+    metadata:
+      labels:
+        app: calibre-web
+    spec:
+      initContainers:
+        - name: seed-metadata
+          image: busybox:1.36
+          command:
+            - sh
+            - -c
+            - |
+              if [ ! -f /config/metadata.db ]; then
+                cp /seed/metadata.db /books/metadata.db
+              fi
+          volumeMounts:
+            - name: seed
+              mountPath: /seed
+            - name: config
+              mountPath: /books
+      containers:
+        - name: calibre-web
+          image: linuxserver/calibre-web:latest
+          env:
+            - name: PUID
+              value: "1000"
+            - name: PGID
+              value: "1000"
+            - name: TZ
+              value: "America/Sao_Paulo"
+          ports:
+            - containerPort: 8083
+          volumeMounts:
+            - name: config
+              mountPath: /config
+            - name: livros
+              mountPath: /books
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+      volumes:
+        - name: seed
+          configMap:
+            name: calibre-seed
+        - name: config
+          persistentVolumeClaim:
+            claimName: calibre-config
+        - name: livros
+          persistentVolumeClaim:
+            claimName: calibre-books

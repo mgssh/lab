@@ -1,6 +1,8 @@
 [tools]
+helm = "latest"
 k9s = "latest"
 kubectl = "latest"
 kubens = "latest"
+kustomize = "latest"
 lazygit = "latest"
 terraform = "latest"
