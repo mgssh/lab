@@ -26,13 +26,13 @@ stages:
     displayName: Terraform Plan
     jobs:
       - job: Plan
-        displayName: Validar e planejar
+        displayName: Plan
         steps:
           - script: |
               curl -sLo terraform.zip https://releases.hashicorp.com/terraform/1.9.8/terraform_1.9.8_linux_amd64.zip
               unzip -o terraform.zip -d /usr/local/bin
               terraform version
-            displayName: Instalar Terraform
+            displayName: Terraform install
 
           - task: AzureCLI@2
             displayName: terraform init
@@ -80,7 +80,7 @@ stages:
       )
     jobs:
       - deployment: Apply
-        displayName: Aplicar mudancas
+        displayName: Apply
         environment: books-dev
         strategy:
           runOnce:
@@ -90,7 +90,7 @@ stages:
                     curl -sLo terraform.zip https://releases.hashicorp.com/terraform/1.9.8/terraform_1.9.8_linux_amd64.zip
                     unzip -o terraform.zip -d /usr/local/bin
                     terraform version
-                  displayName: Instalar Terraform
+                  displayName: Terraform intall
 
                 - task: AzureCLI@2
                   displayName: terraform init + apply
